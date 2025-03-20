@@ -1,0 +1,11 @@
+exportPattern("^[[:alpha:]]+")
+importFrom(scales, hue_pal)
+importFrom(Seurat, CreateSeuratObject, AddMetaData)
+importFrom(ggplot2, ggplot, aes, geom_violin, theme_classic, ggsave)
+importFrom(stats, median, mad)
+importFrom(grDevices, dev.off, png)
+importFrom(graphics, boxplot, par)
+importFrom(utils, read.csv, read.table, write.csv)
+importFrom(gridExtra, marrangeGrob)
+
+
