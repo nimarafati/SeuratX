@@ -38,3 +38,5 @@ Suggests:
     gridExtra,
     corrplot,
     knitr
+URL: https://github.com/nimarafati/SeuratX
+BugReports: https://github.com/nimarafati/SeuratX/issues
