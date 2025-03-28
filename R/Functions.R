@@ -609,7 +609,10 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
   rRNA <- genes.table$gene_name[grep('rRNA', genes.table$gene_biotype)]
   if(sum(!is.na(rRNA)) >0){
     rRNA <- rRNA[!is.na(rRNA)]
-    nR <- colSums(adata[(genes.table$gene_biotype == "rRNA" & !(genes.table$gene_name %in% mito))])
+    rRNA_genes <- genes.table$gene_name[genes.table$gene_biotype == "rRNA" & !(genes.table$gene_name %in% mito)]
+    rRNA_genes <- intersect(rRNA_genes, rownames(adata@assays$RNA@counts))  # Ensure genes exist in matrix
+    nR <- colSums(adata@assays$RNA@counts[rRNA_genes, ])
+
     percentrRNA <- nR/(nC-nMT-nERCC)*100
   }else{
     nR <- rep(0,ncol(adata))
@@ -620,8 +623,11 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
   ## Protein coding
   protein_coding <- genes.table$gene_name[genes.table$gene_biotype == 'protein_coding']
 
-  nPC = colSums(adata[protein_coding[!protein_coding %in% mito],])
-  percentPC = nPC/(nC-nMT-nERCC)*100
+  protein_coding_genes <- protein_coding[!protein_coding %in% mito]
+  protein_coding_genes <- intersect(protein_coding_genes, rownames(adata@assays$RNA@counts))
+  nPC <- colSums(adata@assays$RNA@counts[protein_coding_genes, ])
+
+  percentPC <- nPC/(nC-nMT-nERCC)*100
 
   ## Ribosomal protein.
   rpc <- grepl("^Rp[ls]", rownames(adata), ignore.case = T)
