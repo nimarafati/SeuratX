@@ -578,30 +578,30 @@ read_zUMIs_data <- function(metadata_file_name,
 calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filter_mito = TRUE, mito_chr_name = "MT", genes_table){
   ## To do:
   ## - Add percent intron
-
+  
   ## Calculate stats
-  nC <- colSums(adata@assays$RNA@counts)
+  nC <- colSums(as.data.frame(adata@assays$RNA@counts))
   M <- data.frame(percentERCC = rep(0,ncol(adata)),row.names = colnames(adata))
-
+  
   ## ERCC
   ercc <- grepl("^ERCC", rownames(adata), ignore.case = T)
-  nERCC <- colSums(adata@assays$RNA@counts[ercc,])
+  nERCC <- colSums(as.data.frame(adata@assays$RNA@counts[ercc,]))
   if(sum(nERCC) > 0){
     percentERCC <- nERCC/nC*100
   }
-
-
+  
+  
   ## Mito
   mito <- genes.table$gene_name[genes.table$chr == mito_chr_name]
   if(sum(!is.na(mito)) >0){
     mito <- mito[!is.na(mito)]
-    nMT <- colSums(adata@assays$RNA@counts[(rownames(adata@assays$RNA@counts) %in% mito), ])
+    nMT <- colSums(as.data.frame(adata@assays$RNA@counts[(rownames(adata@assays$RNA@counts) %in% mito), ]))
     percentMT <- nMT/(nC-nERCC)*100
   }else{
     nMT <- rep(0,ncol(adata))
     percentMT <- 0
   }
-
+  
 
 
   ## rRNA
@@ -609,9 +609,10 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
   rRNA <- genes.table$gene_name[grep('rRNA', genes.table$gene_biotype)]
   if(sum(!is.na(rRNA)) >0){
     rRNA <- rRNA[!is.na(rRNA)]
+#    nR <- colSums(adata[(genes.table$gene_biotype == "rRNA" & !(genes.table$gene_name %in% mito))])
     rRNA_genes <- genes.table$gene_name[genes.table$gene_biotype == "rRNA" & !(genes.table$gene_name %in% mito)]
     rRNA_genes <- intersect(rRNA_genes, rownames(adata@assays$RNA@counts))  # Ensure genes exist in matrix
-    nR <- colSums(adata@assays$RNA@counts[rRNA_genes, ])
+    nR <- colSums(as.data.frame(adata@assays$RNA@counts[rRNA_genes, ]))
 
     percentrRNA <- nR/(nC-nMT-nERCC)*100
   }else{
@@ -619,31 +620,32 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
     percentrRNA <- 0
   }
 
-
+  
   ## Protein coding
   protein_coding <- genes.table$gene_name[genes.table$gene_biotype == 'protein_coding']
-
+  
+  # nPC <- colSums(adata[protein_coding[!protein_coding %in% mito],])
   protein_coding_genes <- protein_coding[!protein_coding %in% mito]
   protein_coding_genes <- intersect(protein_coding_genes, rownames(adata@assays$RNA@counts))
-  nPC <- colSums(adata@assays$RNA@counts[protein_coding_genes, ])
+  nPC <- colSums(as.data.frame(adata@assays$RNA@counts[protein_coding_genes, ]))
 
   percentPC <- nPC/(nC-nMT-nERCC)*100
-
+  
   ## Ribosomal protein.
   rpc <- grepl("^Rp[ls]", rownames(adata), ignore.case = T)
-  nRPC <- colSums(adata@assays$RNA@counts[rpc, ])
+  nRPC <- colSums(as.data.frame(adata@assays$RNA@counts[rpc, ]))
   percentRiboPC <- nRPC/(nC-nMT-nERCC)*100
 
   ##
-
+  
   if(filter_ercc == TRUE && sum(nERCC) >0){
-    adata <- adata[!ercc,]
+    adata <- adata[!ercc,]  
   }
-
+  
   if(filter_mito == TRUE && sum(!is.na(mito)) >0){
     adata <- adata[!rownames(adata) %in% mito,]
   }
-
+  
   if(filter_rRNA == TRUE && sum(!is.na(rRNA)) >0){
     adata <- adata[!rownames(adata) %in% rRNA,]
   }
@@ -656,8 +658,8 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
   M$Plate <- adata$orig.ident
   M$percentPC <- percentPC
   M$percentRiboPC<- percentRiboPC
-
-  adata <- AddMetaData(adata, M)
+  
+  adata <- Seurat::AddMetaData(adata, M)
 
 
   genes.table <- genes.table[genes.table$gene_name %in% rownames(adata),]
@@ -665,6 +667,8 @@ calculate_stats <- function(adata, filter_ercc = TRUE, filter_rRNA = TRUE, filte
   return(output)
   gc()
 }
+
+
 
 #' Compute and Visualize Relative Gene Expression Per Cell
 #'
