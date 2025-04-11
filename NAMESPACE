@@ -1,6 +1,6 @@
 exportPattern("^[[:alpha:]]+")
 importFrom(scales, hue_pal)
-importFrom(Seurat, CreateSeuratObject, AddMetaData)
+importFrom(Seurat, CreateSeuratObject, AddMetaData, NoLegend)
 importFrom(ggplot2, ggplot, aes, geom_violin, theme_classic, ggsave)
 importFrom(stats, median, mad)
 importFrom(grDevices, dev.off, png)
