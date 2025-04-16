@@ -966,7 +966,7 @@ cut_cells <- function(meta,
 #' Performs dimensionality reduction on a Seurat object, including feature selection,
 #' scaling, PCA, tSNE, and UMAP. Saves figures for variable features and reduced dimensions.
 #'
-#' @param my_obj A Seurat object.
+#' @param seurat_obj A Seurat object.
 #' @param output_dir Directory where output plots will be saved.
 #' @param n_variable_genes Number of variable genes to select. If `0` or `""`, defaults to 2000.
 #' @param reduction_name_affix String appended to reduction names (e.g., PCA_sample1_2000).
@@ -980,40 +980,40 @@ cut_cells <- function(meta,
 #' @importFrom Seurat ScaleData RunPCA RunTSNE RunUMAP DimPlot
 #' @importFrom ggpubr ggarrange
 #' @importFrom grDevices png dev.off
-run_DR <- function(my_obj, output_dir, n_variable_genes, reduction_name_affix, dims = 1:50, sample_name) {
+run_DR <- function(seurat_obj, output_dir, n_variable_genes, reduction_name_affix, dims = 1:50, sample_name) {
   if (n_variable_genes == 0 || n_variable_genes == '') {
     n_variable_genes <- 2000
     cat('\rWe find 2000 genes that are highly variable across cells for downstream analysis\n')
   }
   
-  my_obj <- FindVariableFeatures(my_obj, selection.method = "vst", nfeatures = n_variable_genes, verbose = FALSE, assay = "RNA")
+  seurat_obj <- FindVariableFeatures(seurat_obj, selection.method = "vst", nfeatures = n_variable_genes, verbose = FALSE, assay = "RNA")
   
   # Plotting top variable genes
-  top20 <- head(VariableFeatures(my_obj), 20)
+  top20 <- head(VariableFeatures(seurat_obj), 20)
   png(file.path(output_dir, 'Top_20_variable_genes.png'), width = 2000, height = 1000, res = 200)
-  LabelPoints(plot = VariableFeaturePlot(my_obj), points = top20, repel = TRUE)
+  LabelPoints(plot = VariableFeaturePlot(seurat_obj), points = top20, repel = TRUE)
   dev.off()
   
   PCA_name  <- paste("PCA", reduction_name_affix, n_variable_genes, sep = '_')
   tSNE_name <- paste("tSNE", reduction_name_affix, n_variable_genes, sep = '_')
   UMAP_name <- paste("UMAP", reduction_name_affix, n_variable_genes, sep = '_')
   
-  my_obj <- ScaleData(my_obj, vars.to.regress = c("percent_mito", "nFeature_RNA"), assay = "RNA")
-  my_obj <- RunPCA(my_obj, verbose = FALSE, reduction.name = PCA_name)
-  my_obj <- RunTSNE(my_obj, reduction = PCA_name, dims = dims,
+  seurat_obj <- ScaleData(seurat_obj, vars.to.regress = c("percent_mito", "nFeature_RNA"), assay = "RNA")
+  seurat_obj <- RunPCA(seurat_obj, verbose = FALSE, reduction.name = PCA_name)
+  seurat_obj <- RunTSNE(seurat_obj, reduction = PCA_name, dims = dims,
                     perplexity = 30, max_iter = 1000, theta = 0.5,
                     eta = 200, num_threads = 0, reduction.name = tSNE_name)
-  my_obj <- RunUMAP(my_obj, reduction = PCA_name, dims = dims,
+  seurat_obj <- RunUMAP(seurat_obj, reduction = PCA_name, dims = dims,
                     n.components = 2, n.neighbors = 30, n.epochs = 200,
                     min.dist = 0.3, learning.rate = 1, spread = 1,
                     reduction.name = UMAP_name)
   
   # Plotting
-  plot_PCA(my_obj, output_dir, sample_name, PCA_name, group.by = "orig.ident")
-  plot_DR(my_obj, output_dir, sample_name, tSNE_name, group.by = "orig.ident", fig_affix = "tSNE")
-  plot_DR(my_obj, output_dir, sample_name, UMAP_name, group.by = "orig.ident", fig_affix = "UMAP")
+  plot_PCA(seurat_obj, output_dir, sample_name, PCA_name, group.by = "orig.ident")
+  plot_DR(seurat_obj, output_dir, sample_name, tSNE_name, group.by = "orig.ident", fig_affix = "tSNE")
+  plot_DR(seurat_obj, output_dir, sample_name, UMAP_name, group.by = "orig.ident", fig_affix = "UMAP")
   
-  return(my_obj)
+  return(seurat_obj)
 }
 
 #' Plot PCA Dimensions, Top Contributing Genes, and Elbow Plot
@@ -1025,7 +1025,7 @@ run_DR <- function(my_obj, output_dir, n_variable_genes, reduction_name_affix, d
 #'   \item An elbow plot showing the standard deviation of PCs to help determine how many to retain.
 #' }
 #'
-#' @param my_obj A Seurat object.
+#' @param seurat_obj A Seurat object.
 #' @param output_dir Directory to save the PCA plots.
 #' @param sample_name Sample name to use in output filenames.
 #' @param reduction.name Name of the PCA reduction (as defined in `RunPCA`).
@@ -1037,23 +1037,23 @@ run_DR <- function(my_obj, output_dir, n_variable_genes, reduction_name_affix, d
 #' @importFrom Seurat DimPlot VizDimLoadings ElbowPlot
 #' @importFrom ggpubr ggarrange
 #' @importFrom grDevices png dev.off
-plot_PCA <- function(my_obj, output_dir, sample_name, reduction.name, group.by) {
+plot_PCA <- function(seurat_obj, output_dir, sample_name, reduction.name, group.by) {
   # PCA dimensions 1–4
   png(paste0(output_dir, '/', sample_name, '_PCA_1_4.png'), width = 3000, height = 2000, res = 200)
-  p1 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 1:2)
-  p2 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 3:4)
+  p1 <- DimPlot(seurat_obj, reduction = reduction.name, group.by = group.by, dims = 1:2)
+  p2 <- DimPlot(seurat_obj, reduction = reduction.name, group.by = group.by, dims = 3:4)
   p <- ggarrange(p1, p2, nrow = 1, ncol = 2)
   print(p)
   dev.off()
   
   # Contribution of genes to top 5 PCs
   png(paste0(output_dir, '/', sample_name, '_top_gene_in_5_PCs.png'), width = 3000, height = 2000, res = 200)
-  VizDimLoadings(my_obj, dims = 1:5, reduction = reduction.name, ncol = 5, balanced = TRUE)
+  VizDimLoadings(seurat_obj, dims = 1:5, reduction = reduction.name, ncol = 5, balanced = TRUE)
   dev.off()
   
   # Elbow plot
   png(paste0(output_dir, '/', sample_name, '_elbow_PCs.png'), width = 3000, height = 2000, res = 200)
-  ElbowPlot(my_obj, reduction = reduction.name, ndims = 50)
+  ElbowPlot(seurat_obj, reduction = reduction.name, ndims = 50)
   dev.off()
 }
 
@@ -1063,7 +1063,7 @@ plot_PCA <- function(my_obj, output_dir, sample_name, reduction.name, group.by) 
 #'
 #' Saves a 2D plot of any dimensionality reduction method such as tSNE or UMAP.
 #'
-#' @param my_obj A Seurat object.
+#' @param seurat_obj A Seurat object.
 #' @param output_dir Directory to save the plot.
 #' @param sample_name Sample name to use in the output filename.
 #' @param reduction.name Reduction name to visualize (e.g., `"tSNE_sample1_2000"`).
@@ -1075,9 +1075,9 @@ plot_PCA <- function(my_obj, output_dir, sample_name, reduction.name, group.by) 
 #'
 #' @importFrom Seurat DimPlot
 #' @importFrom grDevices png dev.off
-plot_DR <- function(my_obj, output_dir, sample_name, reduction.name, group.by, fig_affix) {
+plot_DR <- function(seurat_obj, output_dir, sample_name, reduction.name, group.by, fig_affix) {
   png(paste0(output_dir, '/', sample_name, '_', fig_affix, '.png'), width = 2000, height = 2000, res = 200)
-  p <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by)
+  p <- DimPlot(seurat_obj, reduction = reduction.name, group.by = group.by)
   print(p)
   dev.off()
 }
