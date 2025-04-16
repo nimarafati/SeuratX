@@ -955,3 +955,107 @@ cut_cells <- function(meta,
 
   return(list(filtered = all.filt, settings = settings.out))
 }
+
+
+#' Run Dimensionality Reduction Workflow
+#'
+#' Performs dimensionality reduction on a Seurat object, including feature selection,
+#' scaling, PCA, tSNE, and UMAP. Saves figures for variable features and reduced dimensions.
+#'
+#' @param my_obj A Seurat object.
+#' @param output_dir Directory where output plots will be saved.
+#' @param n_variable_genes Number of variable genes to select. If `0` or `""`, defaults to 2000.
+#' @param reduction_name_affix String appended to reduction names (e.g., PCA_sample1_2000).
+#' @param dims Dimensions to use for PCA, tSNE, and UMAP. Default is `1:50`.
+#' @param sample_name Used in output filenames.
+#'
+#' @return The updated Seurat object with dimensionality reductions added.
+#' @export
+#'
+#' @importFrom Seurat FindVariableFeatures VariableFeaturePlot VariableFeatures LabelPoints
+#' @importFrom Seurat ScaleData RunPCA RunTSNE RunUMAP DimPlot
+#' @importFrom ggpubr ggarrange
+#' @importFrom grDevices png dev.off
+run_DR <- function(my_obj, output_dir, n_variable_genes, reduction_name_affix, dims = 1:50, sample_name) {
+  if (n_variable_genes == 0 || n_variable_genes == '') {
+    n_variable_genes <- 2000
+    cat('\rWe find 2000 genes that are highly variable across cells for downstream analysis\n')
+  }
+  
+  my_obj <- FindVariableFeatures(my_obj, selection.method = "vst", nfeatures = n_variable_genes, verbose = FALSE, assay = "RNA")
+  
+  # Plotting top variable genes
+  top20 <- head(VariableFeatures(my_obj), 20)
+  png(file.path(output_dir, 'Top_20_variable_genes.png'), width = 2000, height = 1000, res = 200)
+  LabelPoints(plot = VariableFeaturePlot(my_obj), points = top20, repel = TRUE)
+  dev.off()
+  
+  PCA_name  <- paste("PCA", reduction_name_affix, n_variable_genes, sep = '_')
+  tSNE_name <- paste("tSNE", reduction_name_affix, n_variable_genes, sep = '_')
+  UMAP_name <- paste("UMAP", reduction_name_affix, n_variable_genes, sep = '_')
+  
+  my_obj <- ScaleData(my_obj, vars.to.regress = c("percent_mito", "nFeature_RNA"), assay = "RNA")
+  my_obj <- RunPCA(my_obj, verbose = FALSE, reduction.name = PCA_name)
+  my_obj <- RunTSNE(my_obj, reduction = PCA_name, dims = dims,
+                    perplexity = 30, max_iter = 1000, theta = 0.5,
+                    eta = 200, num_threads = 0, reduction.name = tSNE_name)
+  my_obj <- RunUMAP(my_obj, reduction = PCA_name, dims = dims,
+                    n.components = 2, n.neighbors = 30, n.epochs = 200,
+                    min.dist = 0.3, learning.rate = 1, spread = 1,
+                    reduction.name = UMAP_name)
+  
+  # Plotting
+  plot_PCA(my_obj, output_dir, sample_name, PCA_name, group.by = "orig.ident")
+  plot_DR(my_obj, output_dir, sample_name, tSNE_name, group.by = "orig.ident", fig_affix = "tSNE")
+  plot_DR(my_obj, output_dir, sample_name, UMAP_name, group.by = "orig.ident", fig_affix = "UMAP")
+  
+  return(my_obj)
+}
+
+#' Plot PCA Dimensions 1–4
+#'
+#' Generates and saves a 2x1 panel of PCA plots showing dimensions 1 vs 2 and 3 vs 4.
+#'
+#' @param my_obj A Seurat object.
+#' @param output_dir Directory to save the PCA plot.
+#' @param sample_name Sample name to use in the output filename.
+#' @param reduction.name Name of the PCA reduction (as defined in `RunPCA`).
+#' @param group.by Metadata column name to color cells by.
+#'
+#' @return Saves a PNG file and returns `NULL`.
+#' @export
+#'
+#' @importFrom Seurat DimPlot
+#' @importFrom ggpubr ggarrange
+#' @importFrom grDevices png dev.off
+plot_PCA <- function(my_obj, output_dir, sample_name, reduction.name, group.by) {
+  png(paste0(output_dir, '/', sample_name, '_PCA_1_4.png'), width = 3000, height = 2000, res = 200)
+  p1 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 1:2)
+  p2 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 3:4)
+  p <- ggarrange(p1, p2, nrow = 1, ncol = 2)
+  print(p)
+  dev.off()
+}
+
+#' Plot Dimensionality Reduction
+#'
+#' Saves a 2D plot of any dimensionality reduction method such as tSNE or UMAP.
+#'
+#' @param my_obj A Seurat object.
+#' @param output_dir Directory to save the plot.
+#' @param sample_name Sample name to use in the output filename.
+#' @param reduction.name Reduction name to visualize (e.g., `"tSNE_sample1_2000"`).
+#' @param group.by Metadata column name to color cells by.
+#' @param fig_affix String appended to the filename (e.g., `"UMAP"` or `"tSNE"`).
+#'
+#' @return Saves a PNG file and returns `NULL`.
+#' @export
+#'
+#' @importFrom Seurat DimPlot
+#' @importFrom grDevices png dev.off
+plot_DR <- function(my_obj, output_dir, sample_name, reduction.name, group.by, fig_affix) {
+  png(paste0(output_dir, '/', sample_name, '_', fig_affix, '.png'), width = 2000, height = 2000, res = 200)
+  p <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by)
+  print(p)
+  dev.off()
+}
