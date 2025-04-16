@@ -1016,30 +1016,48 @@ run_DR <- function(my_obj, output_dir, n_variable_genes, reduction_name_affix, d
   return(my_obj)
 }
 
-#' Plot PCA Dimensions 1–4
+#' Plot PCA Dimensions, Top Contributing Genes, and Elbow Plot
 #'
-#' Generates and saves a 2x1 panel of PCA plots showing dimensions 1 vs 2 and 3 vs 4.
+#' Generates and saves three PCA-related plots for dimensionality reduction diagnostics:
+#' \itemize{
+#'   \item A 2x1 panel of PCA scatter plots showing dimensions 1 vs 2 and 3 vs 4.
+#'   \item A panel of the top contributing genes (loadings) in the first 5 PCs.
+#'   \item An elbow plot showing the standard deviation of PCs to help determine how many to retain.
+#' }
 #'
 #' @param my_obj A Seurat object.
-#' @param output_dir Directory to save the PCA plot.
-#' @param sample_name Sample name to use in the output filename.
+#' @param output_dir Directory to save the PCA plots.
+#' @param sample_name Sample name to use in output filenames.
 #' @param reduction.name Name of the PCA reduction (as defined in `RunPCA`).
 #' @param group.by Metadata column name to color cells by.
 #'
-#' @return Saves a PNG file and returns `NULL`.
+#' @return Saves three PNG files: one for PCA scatter plots, one for gene loadings, and one elbow plot.
 #' @export
 #'
-#' @importFrom Seurat DimPlot
+#' @importFrom Seurat DimPlot VizDimLoadings ElbowPlot
 #' @importFrom ggpubr ggarrange
 #' @importFrom grDevices png dev.off
 plot_PCA <- function(my_obj, output_dir, sample_name, reduction.name, group.by) {
+  # PCA dimensions 1–4
   png(paste0(output_dir, '/', sample_name, '_PCA_1_4.png'), width = 3000, height = 2000, res = 200)
   p1 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 1:2)
   p2 <- DimPlot(my_obj, reduction = reduction.name, group.by = group.by, dims = 3:4)
   p <- ggarrange(p1, p2, nrow = 1, ncol = 2)
   print(p)
   dev.off()
+  
+  # Contribution of genes to top 5 PCs
+  png(paste0(output_dir, '/', sample_name, '_top_gene_in_5_PCs.png'), width = 3000, height = 2000, res = 200)
+  VizDimLoadings(my_obj, dims = 1:5, reduction = reduction.name, ncol = 5, balanced = TRUE)
+  dev.off()
+  
+  # Elbow plot
+  png(paste0(output_dir, '/', sample_name, '_elbow_PCs.png'), width = 3000, height = 2000, res = 200)
+  ElbowPlot(my_obj, reduction = reduction.name, ndims = 50)
+  dev.off()
 }
+
+
 
 #' Plot Dimensionality Reduction
 #'
