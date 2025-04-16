@@ -1,4 +1,4 @@
-# SeuratX: R Package for zUMIs (Smart-seq3) Data Analysis
+# SeuratX: R Package for zUMIs (Smart-seq3) Data Analysis and downstream analysis compatible with other scRNASeq techniques
 
 **SeuratX** is an R package designed for streamlined quality control (QC), visualization, and analysis of Smart-seq3 single-cell RNA-seq data processed with **zUMIs**. It builds on top of the **Seurat** framework and introduces functions for reading expression matrices, computing QC metrics, and generating publication-ready plots.
 
