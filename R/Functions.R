@@ -1000,20 +1000,23 @@ run_DR <- function(seurat_obj, output_dir, n_variable_genes, reduction_name_affi
   
   seurat_obj <- ScaleData(seurat_obj, vars.to.regress = c("percent_mito", "nFeature_RNA"), assay = "RNA")
   seurat_obj <- RunPCA(seurat_obj, verbose = FALSE, reduction.name = PCA_name)
+  gc()
   seurat_obj <- RunTSNE(seurat_obj, reduction = PCA_name, dims = dims,
                     perplexity = 30, max_iter = 1000, theta = 0.5,
                     eta = 200, num_threads = 0, reduction.name = tSNE_name)
+  gc()
   seurat_obj <- RunUMAP(seurat_obj, reduction = PCA_name, dims = dims,
                     n.components = 2, n.neighbors = 30, n.epochs = 200,
                     min.dist = 0.3, learning.rate = 1, spread = 1,
                     reduction.name = UMAP_name)
+  gc()
   
   # Plotting
   plot_PCA(seurat_obj, output_dir, sample_name, PCA_name, group.by = "orig.ident")
   plot_DR(seurat_obj, output_dir, sample_name, tSNE_name, group.by = "orig.ident", fig_affix = "tSNE")
   plot_DR(seurat_obj, output_dir, sample_name, UMAP_name, group.by = "orig.ident", fig_affix = "UMAP")
-  
-  return(seurat_obj)
+  output_list <- list(seurat_obj = seurat_obj, top_20_genes = top20)
+  return(output_list)
 }
 
 #' Plot PCA Dimensions, Top Contributing Genes, and Elbow Plot
