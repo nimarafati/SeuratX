@@ -990,7 +990,7 @@ run_DR <- function(seurat_obj, output_dir, n_variable_genes, reduction_name_affi
   
   # Plotting top variable genes
   top20 <- head(VariableFeatures(seurat_obj), 20)
-  png(file.path(output_dir, 'Top_20_variable_genes.png'), width = 2000, height = 1000, res = 200)
+  png(file.path(output_dir, 'Top_variable_genes.png'), width = 2000, height = 1000, res = 200)
   LabelPoints(plot = VariableFeaturePlot(seurat_obj), points = top20, repel = TRUE)
   dev.off()
   
