@@ -1060,8 +1060,6 @@ plot_PCA <- function(seurat_obj, output_dir, sample_name, reduction.name, group.
   dev.off()
 }
 
-
-
 #' Plot Dimensionality Reduction
 #'
 #' Saves a 2D plot of any dimensionality reduction method such as tSNE or UMAP.
@@ -1083,4 +1081,88 @@ plot_DR <- function(seurat_obj, output_dir, sample_name, reduction.name, group.b
   p <- DimPlot(seurat_obj, reduction = reduction.name, group.by = group.by)
   print(p)
   dev.off()
+}
+
+#' Run Integration from a Merged Seurat Object
+#'
+#' Splits a merged Seurat object by `orig.ident`, runs dimensionality reduction on each sample,
+#' and performs integration using CCA followed by PCA, tSNE, and UMAP on the integrated data.
+#'
+#' @param seurat_obj A merged Seurat object with multiple samples (identified via `orig.ident`).
+#' @param output_dir Directory where the plots will be saved.
+#' @param n_variable_genes Number of highly variable genes to select from each dataset. If `0` or `""`, defaults to 2000.
+#' @param sample_name A sample name used in plot filenames and figure titles.
+#' @param dims Dimensions to use for integration and downstream reductions. Default is `1:50`.
+#' @param npcs Number of principal components to compute during PCA. Default is `50`.
+#' @param reduction_name_affix A short label to append to per-sample reductions during `run_DR`.
+#'
+#' @return An integrated Seurat object with reductions: `PCA_integrated`, `tSNE_integrated`, and `UMAP_integrated`.
+#' @export
+#'
+#' @importFrom Seurat SplitObject FindVariableFeatures FindIntegrationAnchors IntegrateData
+#' @importFrom Seurat ScaleData RunPCA RunTSNE RunUMAP
+#' @importFrom base cat gc
+run_integration <- function(seurat_obj,
+                            output_dir,
+                            n_variable_genes,
+                            sample_name,
+                            dims = 1:50,
+                            npcs = 50,
+                            reduction_name_affix = "integrated",
+                            pca_reduction_name = "PCA_filtered_2000",
+                            method = "cca") {
+  
+  cat('\nIntegrating', sample_name, '\n')
+  
+  if (n_variable_genes == 0 || n_variable_genes == '') {
+    n_variable_genes <- 2000
+    cat('\nUsing 2000 highly variable genes for downstream analysis\n')
+  }
+  
+  # Split merged object by sample ID
+  seurat_obj_list <- SplitObject(seurat_obj, split.by = "orig.ident")
+  
+  # Run per-sample dimensionality reduction
+  for (i in seq_along(seurat_obj_list)) {
+    cat('\nRunning dimensionality reduction on sample', names(seurat_obj_list)[i], '\n')
+    res_list <- run_DR(seurat_obj = seurat_obj_list[[i]], 
+                       reduction_name_affix = reduction_name_affix, 
+                       output_dir = output_dir, dims = dims, 
+                       n_variable_genes = n_variable_genes, sample_name = sample_name)
+    seurat_obj_list[[i]] <- res_list$seurat_obj
+  }
+  
+  if(method == 'harmony'){
+    if(!pca_reduction_name %in% Reductions(seurat_obj))
+      pca_reduction_name <- Reductions(seurat_obj)[grep('PCA', Reductions(seurat_obj))]
+    cat('\nRunning integration using', method, ' with', pca_reduction_name, '\n')
+    tmp_obj <- RunHarmony(seurat_obj_list, group.by.vars = "orig.ident", reduction = pca_reduction_name, dims.use = dims, assay.use = "RNA")
+  }else if(method == 'cca'){
+    
+    # Integration
+    anchors <- FindIntegrationAnchors(object.list = seurat_obj_list, dims = dims, reduction = "cca")
+    integrated_obj <- IntegrateData(anchorset = anchors, dims = dims, new.assay.name = "cca")
+    
+    # Dimensionality reduction on integrated object
+    PCA_name  <- 'PCA_integrated'
+    tSNE_name <- 'tSNE_integrated'
+    UMAP_name <- 'UMAP_integrated'
+  }
+  
+  
+  integrated_obj <- ScaleData(integrated_obj, verbose = FALSE)
+  gc()
+  integrated_obj <- RunPCA(integrated_obj, npcs = npcs, verbose = FALSE, reduction.name = PCA_name)
+  gc()
+  integrated_obj <- RunTSNE(integrated_obj, dims = dims, reduction = PCA_name, reduction.name = tSNE_name)
+  gc()
+  integrated_obj <- RunUMAP(integrated_obj, dims = dims, reduction = PCA_name, reduction.name = UMAP_name)
+  gc()
+  
+  # Plotting
+  plot_PCA(my_obj = integrated_obj, output_dir = output_dir, sample_name = sample_name, reduction.name = PCA_name, group.by = "orig.ident")
+  plot_DR(my_obj = integrated_obj, output_dir = output_dir, sample_name = sample_name, reduction.name = tSNE_name, group.by = "orig.ident", fig_affix = 'tSNE')
+  plot_DR(my_obj = integrated_obj, output_dir = output_dir, sample_name = sample_name, reduction.name = UMAP_name, group.by = "orig.ident", fig_affix = 'UMAP')
+  
+  return(integrated_obj)
 }
