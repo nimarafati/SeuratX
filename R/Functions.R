@@ -955,7 +955,7 @@ cut_cells <- function(meta,
   process_metric("gene_count", gene_count_cut, gene_count_type)
 
   all.filt <- unique(unlist(filt.cells))
-  cat(sprintf("For plate %s filtering %d cells\n\n", plate, length(all.filt)))
+  #cat(sprintf("For plate %s filtering %d cells\n\n", plate, length(all.filt)))
 
   return(list(filtered = all.filt, settings = settings.out))
 }
