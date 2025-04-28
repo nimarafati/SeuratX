@@ -1015,7 +1015,7 @@ run_DR <- function(seurat_obj, output_dir, n_variable_genes, reduction_name_affi
   plot_PCA(seurat_obj, output_dir, sample_name, PCA_name, group.by = "orig.ident")
   plot_DR(seurat_obj, output_dir, sample_name, tSNE_name, group.by = "orig.ident", fig_affix = "tSNE")
   plot_DR(seurat_obj, output_dir, sample_name, UMAP_name, group.by = "orig.ident", fig_affix = "UMAP")
-  output_list <- list(seurat_obj = seurat_obj, top_20_genes = top20)
+  output_list <- list(adata = seurat_obj, top_20_genes = top20)
   return(output_list)
 }
 
@@ -1129,7 +1129,7 @@ run_integration <- function(seurat_obj,
                        reduction_name_affix = reduction_name_affix, 
                        output_dir = output_dir, dims = dims, 
                        n_variable_genes = n_variable_genes, sample_name = sample_name)
-    seurat_obj_list[[i]] <- res_list$seurat_obj
+    seurat_obj_list[[i]] <- res_list$adata
   }
   
   if(method == 'harmony'){
